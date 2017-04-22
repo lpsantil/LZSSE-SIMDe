@@ -5,7 +5,7 @@ solution "lzsse"
 	flags          { "NoPCH" }
 	location       ( _ACTION )
 	configuration { "gmake" }
-		buildoptions   { "-std=c++11", "-march=native" }
+		buildoptions   { "-std=c++11", "-march=native", "-fopenmp-simd", "-DSIMDE_ENABLE_OPENMP" }
 
 	project "lzsse"
 		language "C++"

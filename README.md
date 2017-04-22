@@ -16,6 +16,8 @@ The process of switching to SIMDe was quite trivial:
  2. Rename relevant types and functions.  `__m128i` becomes `simde__m128i`, and `_mm_*` functions become `simde_mm_*`.
  3. Change compiler flags from `-msse4.1` to `-march=native`.
 
+For better performance, it's also helpful to enable OpenMP 4.0 SIMD support; on GCC, you can do this by passing `-fopenmp-simd -DSIMDE_ENABLE_OPENMP`.
+
 I'll try to keep this up to date with LZSSE, but I will not accept any changes directly to this repository not directly related to porting to SIMDe.  If you find a bug, please file it with LZSSE or SIMDe, whichever would be more appropriate.
 
 # LZSSE
