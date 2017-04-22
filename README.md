@@ -1,3 +1,23 @@
+# SIMDe-LZSSE
+
+[LZSSE](https://github.com/ConorStokes/LZSSE/) has a hard dependency on SSE4.1, which prevents it from working on other architectures, or even x86/x86_64 machines without support for the SSE4.1 instruction set.  According to the [Steam Hardware Survey](http://store.steampowered.com/hwsurvey), SSE4.1 currently has just under 90% penetration, and of course that is only for machines with Steam installed (which is a pretty big bias).
+
+This is a fork of [LZSSE](https://github.com/ConorStokes/LZSSE/) which uses [SIMDe](https://github.com/nemequ/simde) to allow for LZSSE (de)compression on platforms where SSE4.1 is not supported, including other architectures (such as ARM).  SIMDe is still under heavy development, and this fork is mostly just a proof-of-concept at this point, but it is fully functional.
+
+For machines with SSE4.1 support, there should be no performance impact.  The SSE4.1 intrinsics will be called, and the compiler should be capable of optimizing away any overhead associated with SIMDe.
+
+For machines which don't natively support the instructions used, SIMDe will emulate them using portable fallbacks.  These are obviously slower, but at least the code works.
+
+Note that a mix of the two is quite possible; for example, a CPU may support SSE2 and SSSE3 but not SSE4.1, in which case SSE4.1 functions will be emulated but instructions supported by the target will be passed through.
+
+The process of switching to SIMDe was quite trivial:
+
+ 1. Include the relevant header from SIMDe.  In this case, `sse4.1.h`.
+ 2. Rename relevant types and functions.  `__m128i` becomes `simde__m128i`, and `_mm_*` functions become `simde_mm_*`.
+ 3. Change compiler flags from `-msse4.1` to `-march=native`.
+
+I'll try to keep this up to date with LZSSE, but I will not accept any changes directly to this repository not directly related to porting to SIMDe.  If you find a bug, please file it with LZSSE or SIMDe, whichever would be more appropriate.
+
 # LZSSE
 [LZSS](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) designed for a branchless SSE decompression implementation.
 
