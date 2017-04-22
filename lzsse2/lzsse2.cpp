@@ -37,7 +37,7 @@ namespace
 {
     // Constants - most of these should not be changed without corresponding code changes because it will break many things in unpredictable ways.
     const uint32_t WINDOW_BITS             = 16;
-    const uint32_t MIN_MATCH_LENGTH        = 3; 
+    const uint32_t MIN_MATCH_LENGTH        = 3;
     const uint32_t LZ_WINDOW_SIZE          = 1 << WINDOW_BITS;
     const uint32_t LZ_WINDOW_MASK          = LZ_WINDOW_SIZE - 1;
     const uint32_t OPTIMAL_HASH_BITS       = 20;
@@ -57,7 +57,7 @@ namespace
     const uint32_t SINGLE_LITERAL_COST     = CONTROL_BITS + LITERAL_BITS;
     const uint32_t DOUBLE_LITERAL_COST     = SINGLE_LITERAL_COST + LITERAL_BITS;
     const uint32_t EXTENDED_MATCH_BOUND    = ( 1 << CONTROL_BITS ) - 1;
-    const uint32_t CONTROL_BLOCK_SIZE      = sizeof( __m128i );
+    const uint32_t CONTROL_BLOCK_SIZE      = sizeof( simde__m128i );
     const uint32_t CONTROLS_PER_BLOCK      = 32;
     const uint32_t LITERALS_PER_CONTROL    = 2;
     const uint32_t MAX_INPUT_PER_CONTROL   = 2;
@@ -119,7 +119,7 @@ LZSSE2_OptimalParseState* LZSSE2_MakeOptimalParseState( size_t bufferSize )
 void LZSSE2_FreeOptimalParseState( LZSSE2_OptimalParseState* toFree )
 {
     ::free( toFree->arrivals );
-        
+
     toFree->arrivals = nullptr;
 
     ::free( toFree );
@@ -159,7 +159,7 @@ inline Match SearchAndUpdateFinder( LZSSE2_OptimalParseState& state, const uint8
     int32_t treeCursor = state.roots[ hash ];
 
     state.roots[ hash ] = position;
-    
+
     int32_t* left        = &state.window[ position & LZ_WINDOW_MASK ].children[ 1 ];
     int32_t* right       = &state.window[ position & LZ_WINDOW_MASK ].children[ 0 ];
     size_t   leftLength  = 0;
@@ -182,12 +182,12 @@ inline Match SearchAndUpdateFinder( LZSSE2_OptimalParseState& state, const uint8
 
         while ( matchLength < lengthToEnd )
         {
-            __m128i input16 = _mm_loadu_si128( reinterpret_cast<const __m128i*>( inputCursor + matchLength ) );
-            __m128i match16 = _mm_loadu_si128( reinterpret_cast<const __m128i*>( key + matchLength ) );
+            simde__m128i input16 = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( inputCursor + matchLength ) );
+            simde__m128i match16 = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( key + matchLength ) );
 
             unsigned long matchBytes;
 
-            _BitScanForward( &matchBytes, ( static_cast<unsigned long>( ~_mm_movemask_epi8( _mm_cmpeq_epi8( input16, match16 ) ) ) | 0x10000 ) );
+            _BitScanForward( &matchBytes, ( static_cast<unsigned long>( ~simde_mm_movemask_epi8( simde_mm_cmpeq_epi8( input16, match16 ) ) ) | 0x10000 ) );
 
             matchLength += matchBytes;
 
@@ -207,7 +207,7 @@ inline Match SearchAndUpdateFinder( LZSSE2_OptimalParseState& state, const uint8
             result.offset   = matchOffset;
             result.position = treeCursor;
         }
-        
+
         if ( matchLength == lengthToEnd )
         {
             *left  = currentNode.children[ 1 ];
@@ -230,14 +230,14 @@ inline Match SearchAndUpdateFinder( LZSSE2_OptimalParseState& state, const uint8
             rightLength = matchLength;
         }
     }
-    
+
     // Special RLE overlapping match case, the LzFind style match above doesn't work very well with our
     // restriction of overlapping matches having offsets of at least 16.
     // Suffix array seems like a better option to handling this.
     {
-        // Note, we're detecting long RLE here, but if we have an offset too close, we'll sacrifice a fair 
+        // Note, we're detecting long RLE here, but if we have an offset too close, we'll sacrifice a fair
         // amount of decompression performance to load-hit-stores.
-        int32_t matchPosition = position - ( sizeof( __m128i ) * 2 );
+        int32_t matchPosition = position - ( sizeof( simde__m128i ) * 2 );
 
         if ( matchPosition >= 0 )
         {
@@ -247,12 +247,12 @@ inline Match SearchAndUpdateFinder( LZSSE2_OptimalParseState& state, const uint8
 
             while ( matchLength < lengthToEnd )
             {
-                __m128i input16 = _mm_loadu_si128( reinterpret_cast<const __m128i*>( inputCursor + matchLength ) );
-                __m128i match16 = _mm_loadu_si128( reinterpret_cast<const __m128i*>( key + matchLength ) );
+                simde__m128i input16 = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( inputCursor + matchLength ) );
+                simde__m128i match16 = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( key + matchLength ) );
 
                 unsigned long matchBytes;
 
-                _BitScanForward( &matchBytes, ( static_cast<unsigned long>( ~_mm_movemask_epi8( _mm_cmpeq_epi8( input16, match16 ) ) ) | 0x10000 ) );
+                _BitScanForward( &matchBytes, ( static_cast<unsigned long>( ~simde_mm_movemask_epi8( simde_mm_cmpeq_epi8( input16, match16 ) ) ) | 0x10000 ) );
 
                 matchLength += matchBytes;
 
@@ -288,7 +288,7 @@ size_t LZSSE2_CompressOptimalParse( LZSSE2_OptimalParseState* state, const void*
 
     const uint8_t* input  = reinterpret_cast< const uint8_t* >( inputChar );
     uint8_t*       output = reinterpret_cast< uint8_t* >( outputChar );
-        
+
     if ( inputLength < MIN_COMPRESSION_SIZE )
     {
         memcpy( output, input, inputLength );
@@ -320,17 +320,17 @@ size_t LZSSE2_CompressOptimalParse( LZSSE2_OptimalParseState* state, const void*
     arrival->cost   = LITERAL_BITS * MIN_MATCH_LENGTH;
     arrival->from   = -1;
     arrival->offset = 0;
-    
+
     // loop through each character and project forward the matches at that character to calculate the cheapest
     // path of arrival for each individual character.
     for ( const uint8_t* earlyEnd = inputEnd - END_PADDING_LITERALS; inputCursor < earlyEnd; ++inputCursor, ++arrival )
     {
-        uint32_t  lengthToEnd     = static_cast< uint32_t >( earlyEnd - inputCursor );       
+        uint32_t  lengthToEnd     = static_cast< uint32_t >( earlyEnd - inputCursor );
         int32_t   currentPosition = static_cast< int32_t >( inputCursor - input );
         Arrival*  literalFirst    = arrival + 1;
         Arrival*  literalSecond   = arrival + 2;
         size_t    arrivalCost     = arrival->cost;
-        
+
         // NOTE - we currently assume only 2 literals filled in here, because the minimum match length is 3.
         // If we wanted to go with a higher minimum match length, we would need to fill in more literals before hand.
         // Also, because there is a maximum of 2 literals per control block assumed.
@@ -363,7 +363,7 @@ size_t LZSSE2_CompressOptimalParse( LZSSE2_OptimalParseState* state, const void*
         }
 
         Match match = SearchAndUpdateFinder( *state, input, inputCursor, earlyEnd, cutOff );
-        
+
         if ( match.position != NO_MATCH )
         {
             for ( size_t matchedLength = MIN_MATCH_LENGTH, end = match.length + 1; matchedLength < end; ++matchedLength )
@@ -461,7 +461,7 @@ size_t LZSSE2_CompressOptimalParse( LZSSE2_OptimalParseState* state, const void*
             }
             else
             {
-                currentControlBlock[ currentControlCount >> 1 ] |= 
+                currentControlBlock[ currentControlCount >> 1 ] |=
                     ( static_cast< uint8_t >( pathDistance ) - 1 ) << CONTROL_BITS;
             }
 
@@ -516,7 +516,7 @@ size_t LZSSE2_CompressOptimalParse( LZSSE2_OptimalParseState* state, const void*
                     }
                     else
                     {
-                        currentControlBlock[ currentControlCount >> 1 ] |= 
+                        currentControlBlock[ currentControlCount >> 1 ] |=
                             static_cast< uint8_t >( EXTENDED_MATCH_BOUND ) << CONTROL_BITS;
                     }
 
@@ -535,7 +535,7 @@ size_t LZSSE2_CompressOptimalParse( LZSSE2_OptimalParseState* state, const void*
                     }
                     else
                     {
-                        currentControlBlock[ currentControlCount >> 1 ] |= 
+                        currentControlBlock[ currentControlCount >> 1 ] |=
                             static_cast< uint8_t >( toEncode ) << CONTROL_BITS;
                     }
 
@@ -588,7 +588,7 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
     // The offset starts off as the minimum match length. We actually need it at least two
     // characters back because we need them to be set to xor out the literals from the match data.
     size_t  offset          = INITIAL_OFFSET;
-    __m128i previousCarryHi = _mm_setzero_si128();
+    simde__m128i previousCarryHi = simde_mm_setzero_si128();
 
     *( outputCursor++ ) = *( inputCursor++ );
     *( outputCursor++ ) = *( inputCursor++ );
@@ -602,7 +602,7 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
     //      the input cursor.
     //    - Used a contived set of casts to sign extend the "read offset" control mask and then use it to mask the input word,
     //      which is then xor'd against the offset, for a "branchless" conditional move into the offset which
-    //      has been carried over from the previous literal/match block. Note, this ends up doing better than a cmov on most 
+    //      has been carried over from the previous literal/match block. Note, this ends up doing better than a cmov on most
     //      modern processors. But we need to pre-xor the input offset.
     //    - We then load the match data from output buffer (offset back from the current output point). Unconditional load here.
     //    - We broadcast the "from literal" control mask from the current least significant byte of the SSE register using a shuffle epi-8
@@ -612,14 +612,14 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
     //    - Store the block. We store all 16 bytes of the SSE register (due to some constraints in the format of the data, we won't
     //      go past the end of the buffer), but we may overlap this.
     //    - bytesOut controls how much we advance the output cursor.
-    //    - We use 8 bit shifts to advance all the controls up to the next byte. There is some variable sized register trickery that 
+    //    - We use 8 bit shifts to advance all the controls up to the next byte. There is some variable sized register trickery that
     //      x86/x64 is great for as long as we don't anger the register renamer.
 
 #define DECODE_STEP( HILO, CHECKMATCH, CHECKBUFFERS )                                                                           \
     {                                                                                                                           \
                                                                                                                                 \
         uint64_t inputWord = *reinterpret_cast<const uint16_t*>( inputCursor );                                                 \
-        __m128i  literals  = _mm_cvtsi64_si128( inputWord );                                                                    \
+        simde__m128i  literals  = simde_mm_cvtsi64_si128( inputWord );                                                                    \
                                                                                                                                 \
         offset ^= static_cast<size_t>( static_cast<ptrdiff_t>( static_cast<int8_t>( readOffsetHalf##HILO ) ) ) & inputWord;     \
                                                                                                                                 \
@@ -630,16 +630,16 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
         if ( CHECKMATCH && matchPointer < output )                                                                              \
             goto MATCH_UNDERFLOW;                                                                                               \
                                                                                                                                 \
-        __m128i fromLiteral = _mm_shuffle_epi8( fromLiteral##HILO, _mm_setzero_si128() );                                       \
-        __m128i matchData   = _mm_loadu_si128( reinterpret_cast<const __m128i*>( matchPointer ) );                              \
+        simde__m128i fromLiteral = simde_mm_shuffle_epi8( fromLiteral##HILO, simde_mm_setzero_si128() );                                       \
+        simde__m128i matchData   = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( matchPointer ) );                              \
                                                                                                                                 \
-        literals = _mm_and_si128( fromLiteral, literals );                                                                      \
+        literals = simde_mm_and_si128( fromLiteral, literals );                                                                 \
                                                                                                                                 \
-        fromLiteral##HILO   = _mm_srli_si128( fromLiteral##HILO, 1 );                                                           \
+        fromLiteral##HILO   = simde_mm_srli_si128( fromLiteral##HILO, 1 );                                                      \
                                                                                                                                 \
-        __m128i toStore     = _mm_xor_si128( matchData, literals );                                                             \
+        simde__m128i toStore     = simde_mm_xor_si128( matchData, literals );                                                   \
                                                                                                                                 \
-        _mm_storeu_si128( reinterpret_cast<__m128i*>( outputCursor ), toStore );                                                \
+        simde_mm_storeu_si128( reinterpret_cast<simde__m128i*>( outputCursor ), toStore );                                      \
                                                                                                                                 \
         outputCursor += static_cast< uint8_t >( bytesOutHalf##HILO );                                                           \
         inputCursor  += static_cast< uint8_t >( streamBytesReadHalf##HILO );                                                    \
@@ -654,7 +654,7 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
 #define DECODE_STEP_HALF( HILO, CHECKMATCH, CHECKBUFFERS )                                                                      \
     {                                                                                                                           \
         size_t  inputWord   = *reinterpret_cast< const uint16_t* >( inputCursor );                                              \
-        __m128i literals    = _mm_cvtsi64_si128( inputWord );                                                                   \
+        simde__m128i literals    = simde_mm_cvtsi64_si128( inputWord );                                                         \
                                                                                                                                 \
         offset ^= static_cast< size_t >( static_cast< ptrdiff_t >( static_cast<int8_t>( readOffsetHalf##HILO ) ) ) & inputWord; \
                                                                                                                                 \
@@ -663,16 +663,16 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
         if ( CHECKMATCH && matchPointer < output )                                                                              \
             goto MATCH_UNDERFLOW;                                                                                               \
                                                                                                                                 \
-        __m128i fromLiteral = _mm_shuffle_epi8( fromLiteral##HILO, _mm_setzero_si128() );                                       \
-        __m128i matchData   = _mm_loadu_si128( reinterpret_cast<const __m128i*>( matchPointer ) );                              \
+        simde__m128i fromLiteral = simde_mm_shuffle_epi8( fromLiteral##HILO, simde_mm_setzero_si128() );                        \
+        simde__m128i matchData   = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( matchPointer ) );               \
                                                                                                                                 \
-        literals = _mm_and_si128( fromLiteral, literals );                                                                      \
+        literals = simde_mm_and_si128( fromLiteral, literals );                                                                 \
                                                                                                                                 \
-        fromLiteral##HILO = _mm_srli_si128( fromLiteral##HILO, 1 );                                                             \
+        fromLiteral##HILO = simde_mm_srli_si128( fromLiteral##HILO, 1 );                                                        \
                                                                                                                                 \
-        __m128i toStore     = _mm_xor_si128( matchData, literals );                                                             \
+        simde__m128i toStore     = simde_mm_xor_si128( matchData, literals );                                                   \
                                                                                                                                 \
-        _mm_storeu_si128( reinterpret_cast<__m128i*>( outputCursor ), toStore );                                                \
+        simde_mm_storeu_si128( reinterpret_cast<simde__m128i*>( outputCursor ), toStore );                                      \
                                                                                                                                 \
         outputCursor += static_cast< uint8_t >( bytesOutHalf##HILO );                                                           \
         inputCursor  += static_cast< uint8_t >( streamBytesReadHalf##HILO );                                                    \
@@ -684,7 +684,7 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
 #define DECODE_STEP_END( HILO, CHECKMATCH, CHECKBUFFERS )                                                                       \
     {                                                                                                                           \
         size_t  inputWord = *reinterpret_cast< const uint16_t* >( inputCursor );                                                \
-        __m128i literals  = _mm_cvtsi64_si128( inputWord );                                                                     \
+        simde__m128i literals  = simde_mm_cvtsi64_si128( inputWord );                                                           \
                                                                                                                                 \
         offset ^= static_cast< size_t >( static_cast< ptrdiff_t >( static_cast<int8_t>( readOffsetHalf##HILO ) ) ) & inputWord; \
                                                                                                                                 \
@@ -693,21 +693,21 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
         if ( CHECKMATCH && matchPointer < output )                                                                              \
             goto MATCH_UNDERFLOW;                                                                                               \
                                                                                                                                 \
-        __m128i fromLiteral = _mm_shuffle_epi8( fromLiteral##HILO, _mm_setzero_si128() );                                       \
-        __m128i matchData   = _mm_loadu_si128( reinterpret_cast<const __m128i*>( matchPointer ) );                              \
+        simde__m128i fromLiteral = simde_mm_shuffle_epi8( fromLiteral##HILO, simde_mm_setzero_si128() );                        \
+        simde__m128i matchData   = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( matchPointer ) );               \
                                                                                                                                 \
-        literals = _mm_and_si128( fromLiteral, literals );                                                                      \
+        literals = simde_mm_and_si128( fromLiteral, literals );                                                                 \
                                                                                                                                 \
-        __m128i toStore     = _mm_xor_si128( matchData, literals );                                                             \
+        simde__m128i toStore     = simde_mm_xor_si128( matchData, literals );                                                   \
                                                                                                                                 \
-        _mm_storeu_si128( reinterpret_cast<__m128i*>( outputCursor ), toStore );                                                \
+        simde_mm_storeu_si128( reinterpret_cast<simde__m128i*>( outputCursor ), toStore );                                      \
                                                                                                                                 \
         outputCursor += static_cast< uint8_t >( bytesOutHalf##HILO );                                                           \
         inputCursor  += static_cast< uint8_t >( streamBytesReadHalf##HILO );                                                    \
                                                                                                                                 \
         if ( CHECKBUFFERS && ( outputCursor >= outputEarlyEnd || inputCursor > inputEarlyEnd ) )                                \
             goto BUFFER_END;                                                                                                    \
-        } 
+        }
 
 #define DECODE_STEP_LO(CHECKMATCH, CHECKBUFFERS )          DECODE_STEP( Lo, CHECKMATCH, CHECKBUFFERS )
 #define DECODE_STEP_HI(CHECKMATCH, CHECKBUFFERS )          DECODE_STEP( Hi, CHECKMATCH, CHECKBUFFERS )
@@ -716,10 +716,10 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
 #define DECODE_STEP_END_LO(CHECKMATCH, CHECKBUFFERS )      DECODE_STEP_END( Lo, CHECKMATCH, CHECKBUFFERS )
 #define DECODE_STEP_END_HI(CHECKMATCH, CHECKBUFFERS )      DECODE_STEP_END( Hi, CHECKMATCH, CHECKBUFFERS )
 
-    __m128i nibbleMask             = _mm_set1_epi8( 0xF );
-    __m128i literalsPerControl     = _mm_set1_epi8( LITERALS_PER_CONTROL );
+    simde__m128i nibbleMask             = simde_mm_set1_epi8( 0xF );
+    simde__m128i literalsPerControl     = simde_mm_set1_epi8( LITERALS_PER_CONTROL );
 
-    // Note, we use this block here because it allows the "fake" inputEarlyEnd/outputEarlyEnd not to cause register spills 
+    // Note, we use this block here because it allows the "fake" inputEarlyEnd/outputEarlyEnd not to cause register spills
     // in the decompression loops. And yes, that did actually happen.
     {
 #pragma warning ( push )
@@ -734,54 +734,54 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
         const  uint8_t* inputSafeEnd  = ( input + inputLength ) - INPUT_BUFFER_SAFE;
         uint8_t*        outputSafeEnd = ( output + outputLength ) - OUTPUT_BUFFER_SAFE;
 
-        // Decoding loop with offset output buffer underflow test, but no buffer overflow tests, assumed to end at a safe distance 
+        // Decoding loop with offset output buffer underflow test, but no buffer overflow tests, assumed to end at a safe distance
         // from overflows
         while ( ( outputCursor - output ) < LZ_WINDOW_SIZE && outputCursor < outputSafeEnd && inputCursor < inputSafeEnd )
         {
             // load the control block
-            __m128i controlBlock      = _mm_loadu_si128( reinterpret_cast<const __m128i*>( inputCursor ) );
+            simde__m128i controlBlock      = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( inputCursor ) );
 
             // split the control block into high and low nibbles.
-            __m128i controlHi         = _mm_and_si128( _mm_srli_epi32( controlBlock, CONTROL_BITS ), nibbleMask );
-            __m128i controlLo         = _mm_and_si128( controlBlock, nibbleMask );
-            
+            simde__m128i controlHi         = simde_mm_and_si128( simde_mm_srli_epi32( controlBlock, CONTROL_BITS ), nibbleMask );
+            simde__m128i controlLo         = simde_mm_and_si128( controlBlock, nibbleMask );
+
             // Here we are testing if the runs will be literals or matches. Note that if the carries are set from the previous operation
             // this will essentially be ignored later on.
-            __m128i isLiteralHi       = _mm_cmplt_epi8( controlHi, literalsPerControl );
-            __m128i isLiteralLo       = _mm_cmplt_epi8( controlLo, literalsPerControl );
+            simde__m128i isLiteralHi       = simde_mm_cmplt_epi8( controlHi, literalsPerControl );
+            simde__m128i isLiteralLo       = simde_mm_cmplt_epi8( controlLo, literalsPerControl );
 
-            // Work out the carry for the low nibbles (which will be used with the high controls to put them into 
+            // Work out the carry for the low nibbles (which will be used with the high controls to put them into
             // match without offset read mode).
-            __m128i carryLo           = _mm_cmpeq_epi8( controlLo, nibbleMask );
-            
+            simde__m128i carryLo           = simde_mm_cmpeq_epi8( controlLo, nibbleMask );
+
             // The carry for the high nibbles is used with the low controls, but needs one byte from the previous iteration. We save
             // the calculated carry to use that byte next iteration.
-            __m128i carryHi           = _mm_cmpeq_epi8( controlHi, nibbleMask );
-            __m128i shiftedCarryHi    = _mm_alignr_epi8( carryHi, previousCarryHi, 15 );
+            simde__m128i carryHi           = simde_mm_cmpeq_epi8( controlHi, nibbleMask );
+            simde__m128i shiftedCarryHi    = simde_mm_alignr_epi8( carryHi, previousCarryHi, 15 );
 
             previousCarryHi = carryHi;
 
             // I want 128 set bits please.
-            __m128i allSet            = _mm_cmpeq_epi8( shiftedCarryHi, shiftedCarryHi ); 
+            simde__m128i allSet            = simde_mm_cmpeq_epi8( shiftedCarryHi, shiftedCarryHi );
 
-            // Calcualting the bytes to output to the stream. Basically, we are subtracting negative one from the control value if the 
-            // carry is not set. This works because the masks produced by comparisons are the equivalent to negative one, which 
+            // Calcualting the bytes to output to the stream. Basically, we are subtracting negative one from the control value if the
+            // carry is not set. This works because the masks produced by comparisons are the equivalent to negative one, which
             // make this a conditional increment.
-            __m128i bytesOutLo        = _mm_sub_epi8( controlLo, _mm_xor_si128( shiftedCarryHi, allSet ) );
-            __m128i bytesOutHi        = _mm_sub_epi8( controlHi, _mm_xor_si128( carryLo, allSet ) );
+            simde__m128i bytesOutLo        = simde_mm_sub_epi8( controlLo, simde_mm_xor_si128( shiftedCarryHi, allSet ) );
+            simde__m128i bytesOutHi        = simde_mm_sub_epi8( controlHi, simde_mm_xor_si128( carryLo, allSet ) );
 
             // Calculate the number of bytes to read per control.
             // In the case the carry is set, no bytes. Otherwise, the offset size (2 bytes) for matches or the number of output bytes for literals.
-            __m128i streamBytesReadLo = _mm_andnot_si128( shiftedCarryHi, _mm_min_epi8( literalsPerControl, bytesOutLo ) );
-            __m128i streamBytesReadHi = _mm_andnot_si128( carryLo, _mm_min_epi8( literalsPerControl, bytesOutHi ) );
-            
+            simde__m128i streamBytesReadLo = simde_mm_andnot_si128( shiftedCarryHi, simde_mm_min_epi8( literalsPerControl, bytesOutLo ) );
+            simde__m128i streamBytesReadHi = simde_mm_andnot_si128( carryLo, simde_mm_min_epi8( literalsPerControl, bytesOutHi ) );
+
             // Masks to read the offset (or keep the previous one) - set in the case that this is not a literal and the carry is not set
-            __m128i readOffsetLo      = _mm_xor_si128( _mm_or_si128( isLiteralLo, shiftedCarryHi ), allSet );
-            __m128i readOffsetHi      = _mm_xor_si128( _mm_or_si128( isLiteralHi, carryLo ), allSet );
+            simde__m128i readOffsetLo      = simde_mm_xor_si128( simde_mm_or_si128( isLiteralLo, shiftedCarryHi ), allSet );
+            simde__m128i readOffsetHi      = simde_mm_xor_si128( simde_mm_or_si128( isLiteralHi, carryLo ), allSet );
 
             // Masks whether we are reading literals - set if the carry is not set and these are literals.
-            __m128i fromLiteralLo     = _mm_andnot_si128( shiftedCarryHi, isLiteralLo );
-            __m128i fromLiteralHi     = _mm_andnot_si128( carryLo, isLiteralHi );
+            simde__m128i fromLiteralLo     = simde_mm_andnot_si128( shiftedCarryHi, isLiteralLo );
+            simde__m128i fromLiteralHi     = simde_mm_andnot_si128( carryLo, isLiteralHi );
 
             // Advance the input past the control block.
             inputCursor += CONTROL_BLOCK_SIZE;
@@ -789,14 +789,14 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
             {
                 // Pull out the bottom halves off the SSE registers from before - we want these
                 // things in GPRs for the more linear logic.
-                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( _mm_cvtsi128_si64( bytesOutLo ) );
-                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( _mm_cvtsi128_si64( bytesOutHi ) );
+                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( simde_mm_cvtsi128_si64( bytesOutLo ) );
+                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( simde_mm_cvtsi128_si64( bytesOutHi ) );
 
-                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( _mm_cvtsi128_si64( streamBytesReadLo ) );
-                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( _mm_cvtsi128_si64( streamBytesReadHi ) );
+                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( simde_mm_cvtsi128_si64( streamBytesReadLo ) );
+                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( simde_mm_cvtsi128_si64( streamBytesReadHi ) );
 
-                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( _mm_cvtsi128_si64( readOffsetLo ) );
-                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( _mm_cvtsi128_si64( readOffsetHi ) );
+                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( simde_mm_cvtsi128_si64( readOffsetLo ) );
+                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( simde_mm_cvtsi128_si64( readOffsetHi ) );
 
                 DECODE_STEP_LO( true, false );
                 DECODE_STEP_HI( true, false );
@@ -821,14 +821,14 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
 
             {
                 // Now the top halves.
-                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( _mm_extract_epi64( bytesOutLo, 1 ) );
-                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( _mm_extract_epi64( bytesOutHi, 1 ) );
+                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( simde_mm_extract_epi64( bytesOutLo, 1 ) );
+                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( simde_mm_extract_epi64( bytesOutHi, 1 ) );
 
-                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( _mm_extract_epi64( streamBytesReadLo, 1 ) );
-                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( _mm_extract_epi64( streamBytesReadHi, 1 ) );
+                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( simde_mm_extract_epi64( streamBytesReadLo, 1 ) );
+                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( simde_mm_extract_epi64( streamBytesReadHi, 1 ) );
 
-                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( _mm_extract_epi64( readOffsetLo, 1 ) );
-                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( _mm_extract_epi64( readOffsetHi, 1 ) );
+                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( simde_mm_extract_epi64( readOffsetLo, 1 ) );
+                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( simde_mm_extract_epi64( readOffsetHi, 1 ) );
 
                 DECODE_STEP_LO( true, false );
                 DECODE_STEP_HI( true, false );
@@ -858,43 +858,43 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
         while ( outputCursor < outputSafeEnd && inputCursor < inputSafeEnd )
         {
             // This code is the same as the loop above, see comments there
-            __m128i controlBlock      = _mm_loadu_si128( reinterpret_cast<const __m128i*>( inputCursor ) );
-            __m128i controlHi         = _mm_and_si128( _mm_srli_epi32( controlBlock, CONTROL_BITS ), nibbleMask );
-            __m128i controlLo         = _mm_and_si128( controlBlock, nibbleMask );
+            simde__m128i controlBlock      = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( inputCursor ) );
+            simde__m128i controlHi         = simde_mm_and_si128( simde_mm_srli_epi32( controlBlock, CONTROL_BITS ), nibbleMask );
+            simde__m128i controlLo         = simde_mm_and_si128( controlBlock, nibbleMask );
 
-            __m128i isLiteralHi       = _mm_cmplt_epi8( controlHi, literalsPerControl );
-            __m128i isLiteralLo       = _mm_cmplt_epi8( controlLo, literalsPerControl );
-            __m128i carryLo           = _mm_cmpeq_epi8( controlLo, nibbleMask );
-            __m128i carryHi           = _mm_cmpeq_epi8( controlHi, nibbleMask );
-            __m128i shiftedCarryHi    = _mm_alignr_epi8( carryHi, previousCarryHi, 15 ); // where we take the carry from the previous hi values
+            simde__m128i isLiteralHi       = simde_mm_cmplt_epi8( controlHi, literalsPerControl );
+            simde__m128i isLiteralLo       = simde_mm_cmplt_epi8( controlLo, literalsPerControl );
+            simde__m128i carryLo           = simde_mm_cmpeq_epi8( controlLo, nibbleMask );
+            simde__m128i carryHi           = simde_mm_cmpeq_epi8( controlHi, nibbleMask );
+            simde__m128i shiftedCarryHi    = simde_mm_alignr_epi8( carryHi, previousCarryHi, 15 ); // where we take the carry from the previous hi values
 
             previousCarryHi = carryHi;
 
-            __m128i neg1              = _mm_cmpeq_epi8( shiftedCarryHi, shiftedCarryHi );
+            simde__m128i neg1              = simde_mm_cmpeq_epi8( shiftedCarryHi, shiftedCarryHi );
 
-            __m128i bytesOutLo        = _mm_sub_epi8( controlLo, _mm_xor_si128( shiftedCarryHi, neg1 ) );
-            __m128i bytesOutHi        = _mm_sub_epi8( controlHi, _mm_xor_si128( carryLo, neg1 ) );
+            simde__m128i bytesOutLo        = simde_mm_sub_epi8( controlLo, simde_mm_xor_si128( shiftedCarryHi, neg1 ) );
+            simde__m128i bytesOutHi        = simde_mm_sub_epi8( controlHi, simde_mm_xor_si128( carryLo, neg1 ) );
 
-            __m128i streamBytesReadLo = _mm_andnot_si128( shiftedCarryHi, _mm_min_epi8( literalsPerControl, bytesOutLo ) );
-            __m128i streamBytesReadHi = _mm_andnot_si128( carryLo, _mm_min_epi8( literalsPerControl, bytesOutHi ) );
+            simde__m128i streamBytesReadLo = simde_mm_andnot_si128( shiftedCarryHi, simde_mm_min_epi8( literalsPerControl, bytesOutLo ) );
+            simde__m128i streamBytesReadHi = simde_mm_andnot_si128( carryLo, simde_mm_min_epi8( literalsPerControl, bytesOutHi ) );
 
-            __m128i readOffsetLo      = _mm_xor_si128( _mm_or_si128( isLiteralLo, shiftedCarryHi ), neg1 );
-            __m128i readOffsetHi      = _mm_xor_si128( _mm_or_si128( isLiteralHi, carryLo ), neg1 );
+            simde__m128i readOffsetLo      = simde_mm_xor_si128( simde_mm_or_si128( isLiteralLo, shiftedCarryHi ), neg1 );
+            simde__m128i readOffsetHi      = simde_mm_xor_si128( simde_mm_or_si128( isLiteralHi, carryLo ), neg1 );
 
-            __m128i fromLiteralLo     = _mm_andnot_si128( shiftedCarryHi, isLiteralLo );
-            __m128i fromLiteralHi     = _mm_andnot_si128( carryLo, isLiteralHi );
+            simde__m128i fromLiteralLo     = simde_mm_andnot_si128( shiftedCarryHi, isLiteralLo );
+            simde__m128i fromLiteralHi     = simde_mm_andnot_si128( carryLo, isLiteralHi );
 
             inputCursor += CONTROL_BLOCK_SIZE;
 
             {
-                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( _mm_cvtsi128_si64( bytesOutLo ) );
-                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( _mm_cvtsi128_si64( bytesOutHi ) );
+                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( simde_mm_cvtsi128_si64( bytesOutLo ) );
+                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( simde_mm_cvtsi128_si64( bytesOutHi ) );
 
-                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( _mm_cvtsi128_si64( streamBytesReadLo ) );
-                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( _mm_cvtsi128_si64( streamBytesReadHi ) );
+                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( simde_mm_cvtsi128_si64( streamBytesReadLo ) );
+                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( simde_mm_cvtsi128_si64( streamBytesReadHi ) );
 
-                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( _mm_cvtsi128_si64( readOffsetLo ) );
-                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( _mm_cvtsi128_si64( readOffsetHi ) );
+                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( simde_mm_cvtsi128_si64( readOffsetLo ) );
+                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( simde_mm_cvtsi128_si64( readOffsetHi ) );
 
                 DECODE_STEP_LO( false, false );
                 DECODE_STEP_HI( false, false );
@@ -918,14 +918,14 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
             }
 
             {
-                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( _mm_extract_epi64( bytesOutLo, 1 ) );
-                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( _mm_extract_epi64( bytesOutHi, 1 ) );
+                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( simde_mm_extract_epi64( bytesOutLo, 1 ) );
+                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( simde_mm_extract_epi64( bytesOutHi, 1 ) );
 
-                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( _mm_extract_epi64( streamBytesReadLo, 1 ) );
-                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( _mm_extract_epi64( streamBytesReadHi, 1 ) );
+                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( simde_mm_extract_epi64( streamBytesReadLo, 1 ) );
+                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( simde_mm_extract_epi64( streamBytesReadHi, 1 ) );
 
-                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( _mm_extract_epi64( readOffsetLo, 1 ) );
-                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( _mm_extract_epi64( readOffsetHi, 1 ) );
+                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( simde_mm_extract_epi64( readOffsetLo, 1 ) );
+                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( simde_mm_extract_epi64( readOffsetHi, 1 ) );
 
                 DECODE_STEP_LO( false, false );
                 DECODE_STEP_HI( false, false );
@@ -949,7 +949,7 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
             }
         }
     }
-    
+
     // Decoding loop with all buffer checks.
     {
         const uint8_t* inputEarlyEnd;
@@ -959,31 +959,31 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
 
         while ( outputCursor < outputEarlyEnd && inputCursor < inputEarlyEnd )
         {
-            __m128i controlBlock      = _mm_loadu_si128( reinterpret_cast<const __m128i*>( inputCursor ) );
-            __m128i controlHi         = _mm_and_si128( _mm_srli_epi32( controlBlock, CONTROL_BITS ), nibbleMask );
-            __m128i controlLo         = _mm_and_si128( controlBlock, nibbleMask );
+            simde__m128i controlBlock      = simde_mm_loadu_si128( reinterpret_cast<const simde__m128i*>( inputCursor ) );
+            simde__m128i controlHi         = simde_mm_and_si128( simde_mm_srli_epi32( controlBlock, CONTROL_BITS ), nibbleMask );
+            simde__m128i controlLo         = simde_mm_and_si128( controlBlock, nibbleMask );
 
-            __m128i isLiteralHi       = _mm_cmplt_epi8( controlHi, literalsPerControl );
-            __m128i isLiteralLo       = _mm_cmplt_epi8( controlLo, literalsPerControl );
-            __m128i carryLo           = _mm_cmpeq_epi8( controlLo, nibbleMask );
-            __m128i carryHi           = _mm_cmpeq_epi8( controlHi, nibbleMask );
-            __m128i shiftedCarryHi    = _mm_alignr_epi8( carryHi, previousCarryHi, 15 ); // where we take the carry from the previous hi values
+            simde__m128i isLiteralHi       = simde_mm_cmplt_epi8( controlHi, literalsPerControl );
+            simde__m128i isLiteralLo       = simde_mm_cmplt_epi8( controlLo, literalsPerControl );
+            simde__m128i carryLo           = simde_mm_cmpeq_epi8( controlLo, nibbleMask );
+            simde__m128i carryHi           = simde_mm_cmpeq_epi8( controlHi, nibbleMask );
+            simde__m128i shiftedCarryHi    = simde_mm_alignr_epi8( carryHi, previousCarryHi, 15 ); // where we take the carry from the previous hi values
 
             previousCarryHi = carryHi;
 
-            __m128i neg1              = _mm_cmpeq_epi8( shiftedCarryHi, shiftedCarryHi ); 
+            simde__m128i neg1              = simde_mm_cmpeq_epi8( shiftedCarryHi, shiftedCarryHi );
 
-            __m128i bytesOutLo        = _mm_sub_epi8( controlLo, _mm_xor_si128( shiftedCarryHi, neg1 ) );
-            __m128i bytesOutHi        = _mm_sub_epi8( controlHi, _mm_xor_si128( carryLo, neg1 ) );
+            simde__m128i bytesOutLo        = simde_mm_sub_epi8( controlLo, simde_mm_xor_si128( shiftedCarryHi, neg1 ) );
+            simde__m128i bytesOutHi        = simde_mm_sub_epi8( controlHi, simde_mm_xor_si128( carryLo, neg1 ) );
 
-            __m128i streamBytesReadLo = _mm_andnot_si128( shiftedCarryHi, _mm_min_epi8( literalsPerControl, bytesOutLo ) );
-            __m128i streamBytesReadHi = _mm_andnot_si128( carryLo, _mm_min_epi8( literalsPerControl, bytesOutHi ) );
+            simde__m128i streamBytesReadLo = simde_mm_andnot_si128( shiftedCarryHi, simde_mm_min_epi8( literalsPerControl, bytesOutLo ) );
+            simde__m128i streamBytesReadHi = simde_mm_andnot_si128( carryLo, simde_mm_min_epi8( literalsPerControl, bytesOutHi ) );
 
-            __m128i readOffsetLo      = _mm_xor_si128( _mm_or_si128( isLiteralLo, shiftedCarryHi ), neg1 );
-            __m128i readOffsetHi      = _mm_xor_si128( _mm_or_si128( isLiteralHi, carryLo ), neg1 );
+            simde__m128i readOffsetLo      = simde_mm_xor_si128( simde_mm_or_si128( isLiteralLo, shiftedCarryHi ), neg1 );
+            simde__m128i readOffsetHi      = simde_mm_xor_si128( simde_mm_or_si128( isLiteralHi, carryLo ), neg1 );
 
-            __m128i fromLiteralLo     = _mm_andnot_si128( shiftedCarryHi, isLiteralLo );
-            __m128i fromLiteralHi     = _mm_andnot_si128( carryLo, isLiteralHi );
+            simde__m128i fromLiteralLo     = simde_mm_andnot_si128( shiftedCarryHi, isLiteralLo );
+            simde__m128i fromLiteralHi     = simde_mm_andnot_si128( carryLo, isLiteralHi );
 
             inputCursor += CONTROL_BLOCK_SIZE;
 
@@ -991,14 +991,14 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
                 goto BUFFER_END;
 
             {
-                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( _mm_cvtsi128_si64( bytesOutLo ) );
-                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( _mm_cvtsi128_si64( bytesOutHi ) );
+                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( simde_mm_cvtsi128_si64( bytesOutLo ) );
+                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( simde_mm_cvtsi128_si64( bytesOutHi ) );
 
-                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( _mm_cvtsi128_si64( streamBytesReadLo ) );
-                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( _mm_cvtsi128_si64( streamBytesReadHi ) );
+                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( simde_mm_cvtsi128_si64( streamBytesReadLo ) );
+                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( simde_mm_cvtsi128_si64( streamBytesReadHi ) );
 
-                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( _mm_cvtsi128_si64( readOffsetLo ) );
-                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( _mm_cvtsi128_si64( readOffsetHi ) );
+                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( simde_mm_cvtsi128_si64( readOffsetLo ) );
+                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( simde_mm_cvtsi128_si64( readOffsetHi ) );
 
                 DECODE_STEP_LO( true, true );
                 DECODE_STEP_HI( true, true );
@@ -1022,14 +1022,14 @@ size_t LZSSE2_Decompress( const void* inputChar, size_t inputLength, void* outpu
             }
 
             {
-                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( _mm_extract_epi64( bytesOutLo, 1 ) );
-                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( _mm_extract_epi64( bytesOutHi, 1 ) );
+                uint64_t bytesOutHalfLo        = static_cast<uint64_t>( simde_mm_extract_epi64( bytesOutLo, 1 ) );
+                uint64_t bytesOutHalfHi        = static_cast<uint64_t>( simde_mm_extract_epi64( bytesOutHi, 1 ) );
 
-                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( _mm_extract_epi64( streamBytesReadLo, 1 ) );
-                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( _mm_extract_epi64( streamBytesReadHi, 1 ) );
+                uint64_t streamBytesReadHalfLo = static_cast<uint64_t>( simde_mm_extract_epi64( streamBytesReadLo, 1 ) );
+                uint64_t streamBytesReadHalfHi = static_cast<uint64_t>( simde_mm_extract_epi64( streamBytesReadHi, 1 ) );
 
-                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( _mm_extract_epi64( readOffsetLo, 1 ) );
-                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( _mm_extract_epi64( readOffsetHi, 1 ) );
+                uint64_t readOffsetHalfLo      = static_cast<uint64_t>( simde_mm_extract_epi64( readOffsetLo, 1 ) );
+                uint64_t readOffsetHalfHi      = static_cast<uint64_t>( simde_mm_extract_epi64( readOffsetHi, 1 ) );
 
                 DECODE_STEP_LO( true, true );
                 DECODE_STEP_HI( true, true );
@@ -1057,7 +1057,7 @@ BUFFER_END:
 
         // When we get here, we have either advanced the right amount on both cursors
         // or something bad happened, so leave it as is, so we can tell where
-        // the error happened. 
+        // the error happened.
         if ( inputCursor == inputEarlyEnd && outputCursor == outputEarlyEnd )
         {
             size_t remainingLiterals = ( input + inputLength ) - inputCursor;
