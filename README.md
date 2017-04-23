@@ -20,6 +20,22 @@ For better performance, it's also helpful to enable OpenMP 4.0 SIMD support; on 
 
 I'll try to keep this up to date with LZSSE, but I will not accept any changes directly to this repository not directly related to porting to SIMDe.  If you find a bug, please file it with LZSSE or SIMDe, whichever would be more appropriate.
 
+## SIMDe Performance
+
+This is based on some informal testing with g++ 6.3 against enwik8.  3 iterations of each test, middle value used.
+
+If provided the same compiler flags (`-march=native -O3`), results for LZSSE and LZSSE-SIMDe are effectively the same (sometimes one is faster, sometimes the other).  So **SIMDe doesn't make things worse**, which is important.
+
+Forcing SIMDe to ignore intrinsics (by passing `-DSIMDE_NO_NATIVE`) makes things more interesting.  LZSSE still uses the intrinsics, but the SIMDe version has to rely on the compiler's auto-vectorizer, so obviously there will be a slow-down.  This is a **worst-case scenario** for SIMDe; often you'll be able to use at least a subset of the ISA extension (*e.g.*, maybe the machine has SSE2 but not SSE4.1), so in reality performance will probably be somewhere between these values:
+
+| Variant | LZSSE Compress | SIMDe Compress | LZSSE Decompress | SIMDe Decompress |
+| ------- | -------------- | -------------- | ---------------- | ---------------- |
+|       2 | 12.519         | 19.612         | 0.084            | 0.252            |
+|       4 | 10.708         | 16.205         | 0.082            | 0.278            |
+|       8 | 11.172         | 17.450         | 0.083            | 0.289            |
+
+The same flags were used for all configurations `-DSIMDE_NO_NATIVE -DSIMDE_ENABLE_OPENMP -fopenmp-simd -march=native -O3`.
+
 # LZSSE
 [LZSS](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) designed for a branchless SSE decompression implementation.
 
