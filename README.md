@@ -4,6 +4,8 @@
 
 This is a fork of [LZSSE](https://github.com/ConorStokes/LZSSE/) which uses [SIMDe](https://github.com/nemequ/simde) to allow for LZSSE (de)compression on platforms where SSE4.1 is not supported, including other architectures (such as ARM).  SIMDe is still under heavy development, and this fork is mostly just a proof-of-concept at this point, but it is fully functional.
 
+Note that, with the default block size from the example program, LZSSE-SIMDe will not work on 32-bit architectures due to memory requirements.  Reducing the block size resolves the issue, and the code has been tested on ARM and x86.  [PAE](https://en.wikipedia.org/wiki/Physical_Address_Extension) should also works, but has not been tested.
+
 For machines with SSE4.1 support, there should be no performance impact.  The SSE4.1 intrinsics will be called, and the compiler should be capable of optimizing away any overhead associated with SIMDe.
 
 For machines which don't natively support the instructions used, SIMDe will emulate them using portable fallbacks.  These are obviously slower, but at least the code works.
